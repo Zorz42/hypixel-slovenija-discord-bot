@@ -1,34 +1,17 @@
-import math
-import requests
 import discord
 import json
 import os
 from discord.ext import commands
 
+from hypixelApi import *
+
 intents = discord.Intents.default()
 intents.members = True
 client = commands.Bot(command_prefix='.', intents=intents)
 
-
-async def getData(username: str):
-    return requests.get(f"https://api.hypixel.net/player?key={settings['hypixel_key']}&name={username}").json()
-
-
-async def getLevel(hypixel_data):
-    network_experience = hypixel_data["player"]["networkExp"]
-    network_level = (math.sqrt((2 * network_experience) + 30625) / 50) - 2.5
-    return math.floor(network_level)
-
-
+hypixel_api = None
 ranks = ["VIP", "VIP+", "MVP", "MVP+", "MVP++"]
 roles = {}
-rank_names = {
-    "null": "NON",
-    "VIP": "VIP",
-    "VIP_PLUS": "VIP+",
-    "MVP": "MVP",
-    "MVP_PLUS": "MVP+",
-}
 
 settings = {
     "linked": {},
@@ -76,40 +59,42 @@ async def updateMember(ctx, member):
             if role.name in ranks:
                 roles[role.name] = role
 
-    hypixel_data = await getData(member.display_name.split(" ")[0])
-    if not hypixel_data["success"]:
-        cause = hypixel_data["cause"]
-        await ctx.send(f"Napaka: {cause}")
-        return
-    if hypixel_data["player"] is None:
-        await ctx.send(f"Ta igralec ne obstaja!")
-    username = hypixel_data["player"]["displayname"]
+    try:
+        player = await hypixel_api.getPlayer(member.display_name.split(" ")[0])
+        rank_name = "NON"
 
-    level = await getLevel(hypixel_data)
-    rank = "NON"
-    try:
-        rank = rank_names[hypixel_data["player"]["newPackageRank"]]
-    except KeyError:
-        pass
-    for rank_name in ranks:
-        await member.remove_roles(roles[rank_name])
-    if rank != "NON":
-        await member.add_roles(roles[rank])
-    is_superstar = False
-    try:
-        if hypixel_data["player"]["monthlyPackageRank"] == "SUPERSTAR":
+        if player.rank == HypixelRank.VIP:
+            rank_name = "VIP"
+        elif player.rank == HypixelRank.VIP_PLUS:
+            rank_name = "VIP+"
+        elif player.rank == HypixelRank.MVP:
+            rank_name = "MVP"
+        elif player.rank == HypixelRank.MVP_PLUS or player.rank == HypixelRank.MVP_PLUS_PLUS:
+            rank_name = "MVP+"
+
+        for i in ranks:
+            await member.remove_roles(roles[i])
+
+        if rank_name != "NON":
+            await member.add_roles(roles[rank_name])
+
+        if player.rank == HypixelRank.MVP_PLUS_PLUS:
             await member.add_roles(roles["MVP++"])
-            is_superstar = True
-    except KeyError:
-        pass
-    await ctx.send(f"Posodobil {username} level na {level} in rank {rank}{' in MVP++' if is_superstar else ''}")
-    await member.edit(nick=f"{username} [{level}]")
+
+        await member.edit(nick=f"{player.username} [{player.network_level}]")
+
+        await ctx.send(f"Posodobil {player.username} level na {player.network_level} in rank {rank_name}"
+                       f"{' in MVP++' if player.rank == HypixelRank.MVP_PLUS_PLUS else ''}")
+
+    except HypixelApiError as error:
+        await ctx.send(f"Napaka: {error}")
 
 
 @client.command(pass_context=True, aliases=["u"])
 async def update(ctx: discord.ext.commands.context.Context, name=None):
     if "bot" not in ctx.channel.name:
         return
+
     target_member = None
     if name is None:
         target_member = ctx.message.author
@@ -168,34 +153,26 @@ async def p(ctx: discord.ext.commands.context.Context, minecraft_name, user: dis
     if user is not None:
         target_user = user
 
-    hypixel_data = await getData(minecraft_name)
-    if not hypixel_data["success"]:
-        cause = hypixel_data["cause"]
-        await ctx.send(f"Napaka: {cause}")
-        return
-    if hypixel_data["player"] is None:
-        await ctx.send(f"Ta igralec ne obstaja!")
-
     try:
-        discord_username = hypixel_data["player"]["socialMedia"]["links"]["DISCORD"]
-    except KeyError or ValueError:
-        await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
-        return
+        player = await hypixel_api.getPlayer(minecraft_name)
+        if player.discord is None:
+            await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
+        elif player.discord != f"{target_user.name}#{target_user.discriminator}":
+            await ctx.send("Discorda se na ujemata!")
+        else:
+            settings["linked"][target_user.id] = player.uuid
 
-    if discord_username != f"{target_user.name}#{target_user.discriminator}":
-        await ctx.send("Discorda se na ujemata!")
-        return
+            with open("settings.json", "w+") as settings_file:
+                json.dump(settings, settings_file, indent=4)
 
-    settings["linked"][target_user.id] = hypixel_data["player"]["uuid"]
+            for role in ctx.guild.roles:
+                if role.name == "Povezan":
+                    await target_user.add_roles(role)
 
-    with open("settings.json", "w+") as settings_file:
-        json.dump(settings, settings_file, indent=4)
+            await ctx.send("Povezava uspesna!")
 
-    for role in ctx.guild.roles:
-        if role.name == "Povezan":
-            await target_user.add_roles(role)
-
-    await ctx.send("Povezava uspesna!")
+    except HypixelApiError as error:
+        await ctx.send(f"Napaka: {error}")
 
 
 @client.command(pass_context=True)
@@ -216,4 +193,5 @@ async def restart(ctx: discord.ext.commands.context.Context):
 
 if __name__ == '__main__':
     loadLinked()
+    hypixel_api = HypixelApi(settings["hypixel_key"])
     client.run(settings["discord_key"])
