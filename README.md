@@ -1,1 +1,1 @@
-# hypixel-slovenija-discord-bot
+# Hypixel Slovenija Discord Bot
