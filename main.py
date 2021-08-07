@@ -106,7 +106,7 @@ async def updateMember(ctx, member):
     await member.edit(nick=f"{username} [{level}]")
 
 
-@client.command(name="update", pass_context=True, aliases=["u"])
+@client.command(pass_context=True, aliases=["u"])
 async def update(ctx: discord.ext.commands.context.Context, name=None):
     if "bot" not in ctx.channel.name:
         return
@@ -143,9 +143,9 @@ async def update(ctx: discord.ext.commands.context.Context, name=None):
         await updateMember(ctx, target_member)
 
 
-@client.command(name="updateall", pass_context=True, aliases=["ua"])
+@client.command(pass_context=True, aliases=["ua"])
 @commands.has_permissions(administrator=True)
-async def updateAll(ctx: discord.ext.commands.context.Context):
+async def updateall(ctx: discord.ext.commands.context.Context):
     if "bot" not in ctx.channel.name:
         return
     for member in ctx.guild.members:
@@ -159,8 +159,8 @@ async def updateAll(ctx: discord.ext.commands.context.Context):
     await ctx.send(f"Updated all members!")
 
 
-@client.command(name="p", pass_context=True)
-async def verify(ctx: discord.ext.commands.context.Context, minecraft_name, user: discord.User = None):
+@client.command(pass_context=True)
+async def p(ctx: discord.ext.commands.context.Context, minecraft_name, user: discord.User = None):
     if "bot" not in ctx.channel.name:
         return
 
@@ -196,6 +196,22 @@ async def verify(ctx: discord.ext.commands.context.Context, minecraft_name, user
             await target_user.add_roles(role)
 
     await ctx.send("Povezava uspesna!")
+
+
+@client.command(pass_context=True)
+@commands.has_permissions(administrator=True)
+async def shutdown(ctx: discord.ext.commands.context.Context):
+    print("Shutdown")
+    await ctx.send("Shutting down")
+    await ctx.bot.close()
+
+
+@client.command(pass_context=True)
+@commands.has_permissions(administrator=True)
+async def restart(ctx: discord.ext.commands.context.Context):
+    print("Restart")
+    await ctx.send("Restarting")
+    await ctx.bot.close()
 
 
 if __name__ == '__main__':
