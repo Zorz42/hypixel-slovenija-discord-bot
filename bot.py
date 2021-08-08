@@ -3,7 +3,7 @@ import asyncio
 from discord.ext import commands
 
 from settings import *
-from hypixelapi import *
+from hypixel_api import *
 
 
 class StopAction(Enum):
@@ -26,6 +26,13 @@ async def getRoleByName(guild: discord.Guild, role_name):
 async def isOfficer(user):
     for role in user.roles:
         if role.name == "Officer":
+            return True
+    return False
+
+
+async def memberHasRole(member, role_name):
+    for role in member.roles:
+        if role.name == role_name:
             return True
     return False
 
@@ -59,69 +66,52 @@ class HypixelSloveniaDiscordBot(commands.Bot):
 
     def addCommands(self):
         @self.command(pass_context=True, aliases=["u"])
-        async def update(ctx: discord.ext.commands.context.Context, user: discord.User = None):
-            if "bot" not in ctx.channel.name:
+        async def update(ctx: discord.ext.commands.context.Context, member: discord.Member = None):
+            if not channelSuitableForCommands(ctx.channel):
                 return
 
-            target_member = None
-            if user is None:
-                target_member = ctx.message.author
-            else:
-                for member in ctx.guild.members:
-                    if member.id == user.id:
-                        target_member = member
-                        break
+            if member is None:
+                member = ctx.author
 
-                if not await isOfficer(ctx.message.author):
-                    await ctx.send(f"No permission to update others")
-                    return
+            if member.id != ctx.author.id and not await isOfficer(ctx.author):
+                await ctx.send(f"No permission to update others")
+                return
 
-            if target_member is None:
-                await ctx.send(f"Could not find that member")
-            else:
-                await self.updateMember(ctx, target_member)
+            await self.updateMember(ctx, member)
 
         @self.command(pass_context=True, aliases=["ua"])
         @commands.has_permissions(administrator=True)
         async def updateall(ctx: discord.ext.commands.context.Context):
-            if "bot" not in ctx.channel.name:
+            if not channelSuitableForCommands(ctx.channel):
                 return
 
             for member in ctx.guild.members:
-                for role in member.roles:
-                    if role.name == "Member":
-                        try:
-                            await self.updateMember(ctx, member)
-                        except Exception as exception:
-                            await ctx.send(f"Python exception occurred for user {member.display_name}")
-                            print(exception)
-            await ctx.send(f"Updated all members!")
+                if memberHasRole(member, "Linked"):
+                    try:
+                        await self.updateMember(ctx, member)
+                    except Exception as exception:
+                        await ctx.send(f"Python exception occurred for user {member.display_name}")
+                        print(exception)
+            await ctx.send(f"Updated all linked players!")
 
         @self.command(pass_context=True)
-        async def p(ctx: discord.ext.commands.context.Context, minecraft_name, user: discord.User = None):
-            if "bot" not in ctx.channel.name:
+        async def p(ctx: discord.ext.commands.context.Context, minecraft_name, member: discord.Member = None):
+            if not channelSuitableForCommands(ctx.channel):
                 return
 
-            target_user = ctx.author
-
-            if user is not None:
-                for member in ctx.guild.members:
-                    if member.id == user.id:
-                        target_user = member
-
             try:
+                if member is None:
+                    member = ctx.author
+
                 player = await self.hypixel_api.getPlayerByName(minecraft_name)
+
                 if player.discord is None:
                     await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
-                elif player.discord != f"{target_user.name}#{target_user.discriminator}":
+                elif player.discord != f"{member.name}#{member.discriminator}":
                     await ctx.send("Discorda se na ujemata!")
                 else:
-                    asyncio.ensure_future(self.settings.linkUser(target_user.id, player.uuid))
-
-                    for role in ctx.guild.roles:
-                        if role.name == "Povezan":
-                            await target_user.add_roles(role)
-
+                    asyncio.ensure_future(self.settings.linkUser(member.id, player.uuid))
+                    await member.add_roles(getRoleByName(ctx.guild, "Povezan"))
                     await ctx.send("Povezava uspesna!")
 
             except HypixelApiError as error:
@@ -130,6 +120,8 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         @self.command(pass_context=True)
         @commands.has_permissions(administrator=True)
         async def shutdown(ctx: discord.ext.commands.context.Context):
+            if not channelSuitableForCommands(ctx.channel):
+                return
             self.stop_action = StopAction.SHUTDOWN
             await ctx.send("Shutting down")
             await ctx.bot.close()
@@ -137,6 +129,8 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         @self.command(pass_context=True)
         @commands.has_permissions(administrator=True)
         async def restart(ctx: discord.ext.commands.context.Context):
+            if not channelSuitableForCommands(ctx.channel):
+                return
             self.stop_action = StopAction.RESTART
             await ctx.send("Restarting")
             await ctx.bot.close()
