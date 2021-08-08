@@ -141,6 +141,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             await ctx.bot.close()
 
     async def close(self):
+        await super(HypixelSloveniaDiscordBot, self).close()
         self.stop_action = StopAction.SHUTDOWN
 
     async def updateMember(self, ctx, member):
