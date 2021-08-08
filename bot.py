@@ -38,7 +38,7 @@ async def memberHasRole(member, role_name):
 
 
 class HypixelSloveniaDiscordBot(commands.Bot):
-    def __init__(self):
+    def __init__(self, channel_shutdown_id):
         intents = discord.Intents.default()
         intents.members = True
         super().__init__(command_prefix=".", intents=intents)
@@ -46,10 +46,13 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         self.hypixel_api = HypixelApi()
         self.addCommands()
         self.stop_action = StopAction.NONE
+        self.channel_shutdown_id = channel_shutdown_id
         asyncio.set_event_loop(asyncio.new_event_loop())
 
     async def on_ready(self):
         print("Bot has started")
+        if self.channel_shutdown_id:
+            await self.get_channel(self.channel_shutdown_id).send("Bot has started")
 
     async def init(self):
         if await self.settings.load("settings.json"):
@@ -74,7 +77,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 member = ctx.author
 
             if member.id != ctx.author.id and not await isOfficer(ctx.author):
-                await ctx.send(f"Nimas dovoljenja da updatas ostale")
+                await ctx.send(f"Nimas dovoljenja da updatas druge uporabnike")
                 return
 
             await self.updateMember(ctx, member)
@@ -107,7 +110,8 @@ class HypixelSloveniaDiscordBot(commands.Bot):
 
                 if player.discord is None:
                     if await isOfficer(ctx.author):
-                        await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu vendar se bo se vseeno povezal")
+                        await ctx.send(f"{minecraft_name} "
+                                       f"nima registriranega discorda na hypixlu vendar se bo se vseeno povezal")
                     else:
                         await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
                         return
@@ -128,6 +132,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             if not channelSuitableForCommands(ctx.channel):
                 return
             self.stop_action = StopAction.SHUTDOWN
+            self.channel_shutdown_id = ctx.channel.id
             await ctx.send("Shutting down")
             await ctx.bot.close()
 
@@ -137,12 +142,9 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             if not channelSuitableForCommands(ctx.channel):
                 return
             self.stop_action = StopAction.RESTART
+            self.channel_shutdown_id = ctx.channel.id
             await ctx.send("Restarting")
             await ctx.bot.close()
-
-    async def close(self):
-        await super(HypixelSloveniaDiscordBot, self).close()
-        self.stop_action = StopAction.SHUTDOWN
 
     async def updateMember(self, ctx, member):
         try:
