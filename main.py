@@ -1,17 +1,16 @@
 import discord
 import json
 import os
+import asyncio
 from discord.ext import commands
 
-from hypixelApi import *
+from hypixelapi import *
 
 intents = discord.Intents.default()
 intents.members = True
 client = commands.Bot(command_prefix='.', intents=intents)
 
 hypixel_api = None
-ranks = ["VIP", "VIP+", "MVP", "MVP+", "MVP++"]
-roles = {}
 
 settings = {
     "linked": {},
@@ -20,32 +19,34 @@ settings = {
 }
 
 
-def saveLinked():
+async def saveLinked():
     with open("settings.json", "w+") as settings_file:
         json.dump(settings, settings_file, indent=4, sort_keys=True)
 
 
-def loadLinked():
+async def loadLinked():
     global settings
     if os.path.exists("settings.json"):
         with open("settings.json", "r") as settings_file:
             settings = json.load(settings_file)
 
-    quit_ = False
-
     if settings["discord_key"] == "insert your discord bot key here":
         print("Insert discord_key into settings.json")
-        quit_ = True
+        return False
 
     if settings["hypixel_key"] == "insert your hypixel api key here":
         print("Insert hypixel_key into settings.json")
-        quit_ = True
+        return False
 
-    with open("settings.json", "w+") as settings_file:
-        json.dump(settings, settings_file, indent=4)
+    await saveLinked()
 
-    if quit_:
-        exit(0)
+    return True
+
+
+async def getRoleByName(guild: discord.Guild, role_name):
+    for role in guild.roles:
+        if role.name == role_name:
+            return role
 
 
 @client.event
@@ -54,11 +55,6 @@ async def on_ready():
 
 
 async def updateMember(ctx, member):
-    if roles == {}:
-        for role in ctx.guild.roles:
-            if role.name in ranks:
-                roles[role.name] = role
-
     try:
         player = await hypixel_api.getPlayer(member.display_name.split(" ")[0])
         rank_name = "NON"
@@ -72,14 +68,14 @@ async def updateMember(ctx, member):
         elif player.rank == HypixelRank.MVP_PLUS or player.rank == HypixelRank.MVP_PLUS_PLUS:
             rank_name = "MVP+"
 
-        for i in ranks:
-            await member.remove_roles(roles[i])
+        for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++"]:
+            await member.remove_roles(await getRoleByName(ctx.guild, role_name))
 
         if rank_name != "NON":
-            await member.add_roles(roles[rank_name])
+            await member.add_roles(await getRoleByName(ctx.guild, rank_name))
 
         if player.rank == HypixelRank.MVP_PLUS_PLUS:
-            await member.add_roles(roles["MVP++"])
+            await member.add_roles(await getRoleByName(ctx.guild, "MVP++"))
 
         await member.edit(nick=f"{player.username} [{player.network_level}]")
 
@@ -192,6 +188,8 @@ async def restart(ctx: discord.ext.commands.context.Context):
 
 
 if __name__ == '__main__':
-    loadLinked()
-    hypixel_api = HypixelApi(settings["hypixel_key"])
-    client.run(settings["discord_key"])
+    if asyncio.get_event_loop().run_until_complete(loadLinked()):
+        hypixel_api = HypixelApi(settings["hypixel_key"])
+        client.run(settings["discord_key"])
+    else:
+        print("Shutdown")
