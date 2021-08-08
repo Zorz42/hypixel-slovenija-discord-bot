@@ -14,7 +14,7 @@ class StopAction(Enum):
 
 
 def channelSuitableForCommands(channel):
-    return "bot" not in channel.name
+    return "bot" in channel.name
 
 
 async def getRoleByName(guild: discord.Guild, role_name):
@@ -74,7 +74,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 member = ctx.author
 
             if member.id != ctx.author.id and not await isOfficer(ctx.author):
-                await ctx.send(f"No permission to update others")
+                await ctx.send(f"Nimas dovoljenja da updatas ostale")
                 return
 
             await self.updateMember(ctx, member)
@@ -106,13 +106,18 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 player = await self.hypixel_api.getPlayerByName(minecraft_name)
 
                 if player.discord is None:
-                    await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
+                    if isOfficer(ctx.author):
+                        await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu vendar se bo se vseeno povezal")
+                    else:
+                        await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
+                        return
                 elif player.discord != f"{member.name}#{member.discriminator}":
                     await ctx.send("Discorda se na ujemata!")
-                else:
-                    asyncio.ensure_future(self.settings.linkUser(member.id, player.uuid))
-                    await member.add_roles(getRoleByName(ctx.guild, "Povezan"))
-                    await ctx.send("Povezava uspesna!")
+                    return
+
+                asyncio.ensure_future(self.settings.linkUser(member.id, player.uuid))
+                await member.add_roles(await getRoleByName(ctx.guild, "Povezan"))
+                await ctx.send("Povezava uspesna!")
 
             except HypixelApiError as error:
                 await ctx.send(f"Napaka: {error}")
