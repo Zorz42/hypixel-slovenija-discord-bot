@@ -27,7 +27,7 @@ class HypixelApiError(Exception):
 
 class HypixelPlayer:
     def __init__(self, data: dict):
-        self.username = data["player"]["playername"]
+        self.username = data["player"]["displayname"]
 
         network_experience = data["player"]["networkExp"]
         network_level = (math.sqrt((2 * network_experience) + 30625) / 50) - 2.5
@@ -51,21 +51,39 @@ class HypixelApi:
         self.__key = key
         self.__saved_players = {}
 
-    async def getPlayer(self, name: str) -> HypixelPlayer:
+    async def __fetchDataFromUUID(self, uuid):
+        url = f"https://api.hypixel.net/player?key={self.__key}&uuid={uuid}"
+        return requests.get(url).json()
+
+    async def __fetchDataFromName(self, name):
         url = f"https://api.hypixel.net/player?key={self.__key}&name={name}"
-        data = requests.get(url).json()
+        return requests.get(url).json()
+
+    async def __savePlayerData(self, data, uuid):
         if data["success"]:
             if data["player"] is None:
                 raise HypixelApiError("This player does not exist")
-            self.__saved_players[name] = HypixelPlayer(data)
+            self.__saved_players[data["player"]["uuid"]] = HypixelPlayer(data)
         else:
             cause = data["cause"]
             if cause == "You have already looked up this name recently":
-                if name not in self.__saved_players.keys():
+                if uuid not in self.__saved_players.keys():
                     raise HypixelApiError("Cannot access player data and there is no fallback data")
                 else:
-                    return self.__saved_players[name]
+                    return
             else:
                 raise HypixelApiError(cause)
 
-        return self.__saved_players[name]
+    async def getPlayerByName(self, name):
+        data = await self.__fetchDataFromName(name)
+
+        await self.__savePlayerData(data, None)
+
+        return self.__saved_players[data["player"]["uuid"]]
+
+    async def getPlayerByUUID(self, uuid) -> HypixelPlayer:
+        data = await self.__fetchDataFromUUID(uuid)
+
+        await self.__savePlayerData(data, uuid)
+
+        return self.__saved_players[uuid]

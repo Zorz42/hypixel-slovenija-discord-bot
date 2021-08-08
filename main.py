@@ -1,46 +1,16 @@
 import discord
-import json
-import os
 import asyncio
 from discord.ext import commands
 
+from settings import *
 from hypixelapi import *
 
 intents = discord.Intents.default()
 intents.members = True
 client = commands.Bot(command_prefix='.', intents=intents)
 
-hypixel_api = None
-
-settings = {
-    "linked": {},
-    "discord_key": "insert your discord bot key here",
-    "hypixel_key": "insert your hypixel api key here",
-}
-
-
-async def saveLinked():
-    with open("settings.json", "w+") as settings_file:
-        json.dump(settings, settings_file, indent=4, sort_keys=True)
-
-
-async def loadLinked():
-    global settings
-    if os.path.exists("settings.json"):
-        with open("settings.json", "r") as settings_file:
-            settings = json.load(settings_file)
-
-    if settings["discord_key"] == "insert your discord bot key here":
-        print("Insert discord_key into settings.json")
-        return False
-
-    if settings["hypixel_key"] == "insert your hypixel api key here":
-        print("Insert hypixel_key into settings.json")
-        return False
-
-    await saveLinked()
-
-    return True
+hypixel_api: HypixelApi
+settings: Settings
 
 
 async def getRoleByName(guild: discord.Guild, role_name):
@@ -56,7 +26,11 @@ async def on_ready():
 
 async def updateMember(ctx, member):
     try:
-        player = await hypixel_api.getPlayer(member.display_name.split(" ")[0])
+        if not await settings.isUserLinked(member.id):
+            await ctx.send("Ta uporabnik ni povezan z minecraft racunom")
+            return
+        uuid = await settings.getLinkedUser(member.id)
+        player = await hypixel_api.getPlayerByUUID(uuid)
         rank_name = "NON"
 
         if player.rank == HypixelRank.VIP:
@@ -146,20 +120,20 @@ async def p(ctx: discord.ext.commands.context.Context, minecraft_name, user: dis
         return
 
     target_user = ctx.author
+
     if user is not None:
-        target_user = user
+        for member in ctx.guild.members:
+            if member.id == user.id:
+                target_user = member
 
     try:
-        player = await hypixel_api.getPlayer(minecraft_name)
+        player = await hypixel_api.getPlayerByName(minecraft_name)
         if player.discord is None:
             await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
         elif player.discord != f"{target_user.name}#{target_user.discriminator}":
             await ctx.send("Discorda se na ujemata!")
         else:
-            settings["linked"][target_user.id] = player.uuid
-
-            with open("settings.json", "w+") as settings_file:
-                json.dump(settings, settings_file, indent=4)
+            asyncio.ensure_future(settings.linkUser(target_user.id, player.uuid))
 
             for role in ctx.guild.roles:
                 if role.name == "Povezan":
@@ -187,9 +161,18 @@ async def restart(ctx: discord.ext.commands.context.Context):
     await ctx.bot.close()
 
 
-if __name__ == '__main__':
-    if asyncio.get_event_loop().run_until_complete(loadLinked()):
-        hypixel_api = HypixelApi(settings["hypixel_key"])
-        client.run(settings["discord_key"])
+async def main():
+    global settings
+    settings = Settings()
+    if await settings.load("settings.json"):
+        global hypixel_api
+        hypixel_api = HypixelApi(await settings.getHypixelKey())
+        return True
     else:
         print("Shutdown")
+        return False
+
+if __name__ == '__main__':
+    if asyncio.get_event_loop().run_until_complete(main()):
+        discord_key = asyncio.get_event_loop().run_until_complete(settings.getDiscordKey())
+        client.run(discord_key)
