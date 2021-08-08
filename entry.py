@@ -2,10 +2,8 @@ from bot import HypixelSloveniaDiscordBot, StopAction
 
 
 while True:
-    print("Starting bot")
     bot = HypixelSloveniaDiscordBot()
-    bot.init()
-    bot.run_bot()
+    bot.runBot()
 
     if bot.stop_action == StopAction.NONE:
         print("Bot has crashed")

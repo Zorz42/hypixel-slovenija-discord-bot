@@ -6,17 +6,28 @@ from settings import *
 from hypixelapi import *
 
 
+class StopAction(Enum):
+    NONE = auto()
+    SHUTDOWN = auto()
+    RESTART = auto()
+    UPDATE = auto()
+
+
+def channelSuitableForCommands(channel):
+    return "bot" not in channel.name
+
+
 async def getRoleByName(guild: discord.Guild, role_name):
     for role in guild.roles:
         if role.name == role_name:
             return role
 
 
-class StopAction(Enum):
-    NONE = auto()
-    SHUTDOWN = auto()
-    RESTART = auto()
-    UPDATE = auto()
+async def isOfficer(user):
+    for role in user.roles:
+        if role.name == "Officer":
+            return True
+    return False
 
 
 class HypixelSloveniaDiscordBot(commands.Bot):
@@ -33,52 +44,37 @@ class HypixelSloveniaDiscordBot(commands.Bot):
     async def on_ready(self):
         print("Bot has started")
 
-    async def actualInit(self):
+    async def init(self):
         if await self.settings.load("settings.json"):
             await self.hypixel_api.setKey(await self.settings.getHypixelKey())
             return True
         else:
-            print("Shutdown")
             return False
 
-    def init(self):
-        asyncio.get_event_loop().run_until_complete(self.actualInit())
-
-    def run_bot(self):
-        self.run(self.settings.getDiscordKey())
+    def runBot(self):
+        if asyncio.get_event_loop().run_until_complete(self.init()):
+            self.run(self.settings.getDiscordKey())
+        else:
+            self.stop_action = StopAction.SHUTDOWN
 
     def addCommands(self):
         @self.command(pass_context=True, aliases=["u"])
-        async def update(ctx: discord.ext.commands.context.Context, name=None):
+        async def update(ctx: discord.ext.commands.context.Context, user: discord.User = None):
             if "bot" not in ctx.channel.name:
                 return
 
             target_member = None
-            if name is None:
+            if user is None:
                 target_member = ctx.message.author
-            elif name.startswith("<@!"):
-                user_id = int(name[3:-1])
+            else:
                 for member in ctx.guild.members:
-                    if member.id == user_id:
+                    if member.id == user.id:
                         target_member = member
                         break
-            else:
-                is_permitted = False
-                author = ctx.message.author
-                for role in author.roles:
-                    if role.name == "Officer":
-                        is_permitted = True
-                        break
 
-                if not is_permitted:
+                if not await isOfficer(ctx.message.author):
                     await ctx.send(f"No permission to update others")
                     return
-
-                for member in ctx.guild.members:
-                    if member.nick is not None:
-                        if member.nick.split(" ")[0].upper() == name.upper():
-                            target_member = member
-                            break
 
             if target_member is None:
                 await ctx.send(f"Could not find that member")
@@ -90,6 +86,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         async def updateall(ctx: discord.ext.commands.context.Context):
             if "bot" not in ctx.channel.name:
                 return
+
             for member in ctx.guild.members:
                 for role in member.roles:
                     if role.name == "Member":
@@ -143,6 +140,9 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             self.stop_action = StopAction.RESTART
             await ctx.send("Restarting")
             await ctx.bot.close()
+
+    async def close(self):
+        self.stop_action = StopAction.SHUTDOWN
 
     async def updateMember(self, ctx, member):
         try:
