@@ -47,5 +47,5 @@ class Settings:
         return str(user_id) in self.__settings["linked"]
 
     async def linkUser(self, user_id, uuid):
-        self.__settings["linked"][user_id] = str(uuid)
+        self.__settings["linked"][str(user_id)] = uuid
         await self.save()
