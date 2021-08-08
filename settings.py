@@ -34,7 +34,7 @@ class Settings:
 
         return True
 
-    async def getDiscordKey(self):
+    def getDiscordKey(self):
         return self.__settings["discord_key"]
 
     async def getHypixelKey(self):

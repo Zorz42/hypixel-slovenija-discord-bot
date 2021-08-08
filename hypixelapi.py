@@ -47,9 +47,12 @@ class HypixelPlayer:
 
 
 class HypixelApi:
-    def __init__(self, key: str):
-        self.__key = key
+    def __init__(self):
+        self.__key = ""
         self.__saved_players = {}
+
+    async def setKey(self, key: str):
+        self.__key = key
 
     async def __fetchDataFromUUID(self, uuid):
         url = f"https://api.hypixel.net/player?key={self.__key}&uuid={uuid}"
