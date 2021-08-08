@@ -106,7 +106,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 player = await self.hypixel_api.getPlayerByName(minecraft_name)
 
                 if player.discord is None:
-                    if isOfficer(ctx.author):
+                    if await isOfficer(ctx.author):
                         await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu vendar se bo se vseeno povezal")
                     else:
                         await ctx.send(f"{minecraft_name} nima registriranega discorda na hypixlu!")
