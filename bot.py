@@ -146,6 +146,26 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             await ctx.send("Restarting")
             await ctx.bot.close()
 
+        # Displays linked users inside settings.json with uuid and discordID's
+        @self.command(pass_context=True)
+        @commands.has_permissions(administrator=True)
+        async def linkdata(ctx: discord.ext.commands.context.Context):
+            if not channelSuitableForCommands(ctx.channel):
+                return
+            with open("settings.json") as f:
+                json_data = json.load(f)
+            await ctx.send(json_data["linked"])
+
+        # Displays what Minecraft UUID is linked to inputted Discord ID in setting.json
+        @self.command(pass_context=True)
+        @commands.has_permissions(administrator=True)
+        async def linkdatauuid(ctx: discord.ext.commands.context.Context, get_uuid_data):
+            if not channelSuitableForCommands(ctx.channel):
+                return
+            with open("settings.json") as f:
+                json_data = json.load(f)
+            await ctx.send("`Minecraft UUID linked to used Discord ID is:` "+str(json_data["linked"][get_uuid_data]))
+
     async def updateMember(self, ctx, member):
         try:
             if not await self.settings.isUserLinked(member.id):
