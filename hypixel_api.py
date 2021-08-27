@@ -34,9 +34,13 @@ class HypixelPlayer:
         self.network_level = math.floor(network_level)
 
         self.rank = HypixelRank.NON
-        if "newPackageRank" in data["player"]:
-            self.rank = rank_names[data["player"]["newPackageRank"]]
-
+        try:
+            if "newPackageRank" in data["player"]:
+                self.rank = rank_names[data["player"]["newPackageRank"]]
+                self.rank = rank_names[data["player"]["monthlyPackageRank"]]
+        except KeyError or ValueError:
+            pass
+            
         self.discord = None
         try:
             self.discord = data["player"]["socialMedia"]["links"]["DISCORD"]
