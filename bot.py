@@ -266,7 +266,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             name = str(display_name)
             name_split = name.split()
             uuid = name_to_uuid(name_split[0])
-            # if name dosen't exist unverifyes user
+            # if name doesn't exist unverifyes user
             if uuid == "Error":
                 await log_channel.send(f"`{name_split[0]}` ne obstaja. Od-preveril `{member}`")
                 for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++", "Member", "Guild Member"]:
@@ -300,11 +300,11 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 if guild.guild_id == hypixel_guild_id:
                     await member.add_roles(await getRoleByName(ctx.guild, "Guild Member"))
                     await log_channel.send(f"Dodal `Guild Member` `{player.username}`.")
-            # check if someone with guild member role isn't in guild then remove "Guild Member"
+            # check if someone with guild member role isn't in guild then remove all non moderator guild roles
             if guild_role in member.roles:
                 if guild.guild_id != hypixel_guild_id:
-                    await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"))
-                    await log_channel.send(f"Odstranil `Guild Member` od `{player.username}`.")
+                    await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"), await getRoleByName(ctx.guild, "Veteran"), await getRoleByName(ctx.guild, "Professional"))
+                    await log_channel.send(f"Odstranil use Guild role od `{player.username}`.")
 
             await member.edit(nick=f"{player.username} [{player.network_level}]")
 
