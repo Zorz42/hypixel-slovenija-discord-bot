@@ -15,9 +15,9 @@ class StopAction(Enum):
     UPDATE = auto()
 
 
-logging_channel = 874233307548753934  # int
-bot_channels = [874233307238367299, 874233306672156701, 874233306424684594]  # list
-officer_role = 874233306424684590  # int
+logging_channel = 886285830950383687  # int
+bot_channels = [886285672208539698, 886285672208539698, 886285672208539698, 886285672208539698]  # list
+officer_role = 798483000404869121  # int
 hypixel_guild_id = "5ff980828ea8c9e004b008e2"  # str
 
 
@@ -64,7 +64,7 @@ class MyHelp(commands.HelpCommand):
             filtered = await self.filter_commands(commands, sort=True)
             command_signatures = [self.get_command_signature(c) for c in filtered]
             if command_signatures:
-                cog_name = getattr(cog, "qualified_name", "No Category")
+                cog_name = getattr(cog, "qualified_name", "Commands")
                 embed.add_field(name=cog_name, value="\n".join(command_signatures), inline=False)
 
         channel = self.get_destination()
