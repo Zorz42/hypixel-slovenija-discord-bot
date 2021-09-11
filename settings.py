@@ -6,9 +6,8 @@ class Settings:
     def __init__(self):
         self.__filename = None
         self.__settings = {
-            "linked": {},
             "discord_key": "insert your discord bot key here",
-            "hypixel_key": "insert your hypixel api key here",
+            "hypixel_key": "insert your hypixel api key here"
         }
 
     async def save(self):
@@ -39,13 +38,3 @@ class Settings:
 
     async def getHypixelKey(self):
         return self.__settings["hypixel_key"]
-
-    async def getLinkedUser(self, user_id):
-        return self.__settings["linked"][str(user_id)]
-
-    async def isUserLinked(self, user_id):
-        return str(user_id) in self.__settings["linked"]
-
-    async def linkUser(self, user_id, uuid):
-        self.__settings["linked"][str(user_id)] = uuid
-        await self.save()
