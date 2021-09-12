@@ -7,7 +7,20 @@ class Settings:
         self.__filename = None
         self.__settings = {
             "discord_key": "insert your discord bot key here",
-            "hypixel_key": "insert your hypixel api key here"
+            "hypixel_key": "insert your hypixel api key here",
+            "config": {
+                "logging_channel_id": "insert logging channel ID",
+                "officer_role_id": "insert Officer role ID",
+                "hypixel_guild_id": "insert Hypixel guild ID",
+                "admin_role_id": "insert admin role ID",
+                "auto_update": "False",  # leave this line alone in settings.json
+                "bot_channels": {
+                    "1": "874233307238367299",
+                    "2": "874233307238367299",
+                    "3": "874233307238367299",
+                    "4": "874233307238367299"
+                }
+            }
         }
 
     async def save(self):
@@ -38,3 +51,4 @@ class Settings:
 
     async def getHypixelKey(self):
         return self.__settings["hypixel_key"]
+

@@ -15,10 +15,51 @@ class StopAction(Enum):
     UPDATE = auto()
 
 
-logging_channel = 886285830950383687  # int
-bot_channels = [886285672208539698, 886285672208539698, 886285672208539698, 886285672208539698]  # list
-officer_role = 798483000404869121  # int
-hypixel_guild_id = "5ff980828ea8c9e004b008e2"  # str
+# read & set config from settings.py
+directory_path = os.getcwd()
+with open(f"{directory_path}/settings.json") as f:
+    json_config_data = json.load(f)["config"]
+logging_channel = int(json_config_data["logging_channel_id"])  # int
+bot_channels_id = json_config_data["bot_channels"]  # list
+officer_role = int(json_config_data["officer_role_id"])  # int
+hypixel_guild_id = str(json_config_data["hypixel_guild_id"])  # str
+master_role_id = str(json_config_data["admin_role_id"])
+bot_channels = []
+count = 1
+for item in json_config_data["bot_channels"]:
+    bot_channels.append(int(json_config_data["bot_channels"][f"{count}"]))
+    count += 1
+
+
+def is_veteran(name):
+    with open(f"{directory_path}/settings.json") as f:
+        json_data = json.load(f)
+    api_key = json_data["hypixel_key"]
+    guild_id = str(json_data["config"]["hypixel_guild_id"])
+    uuid = name_to_uuid(name)
+    if uuid == "Error":
+        return
+    guild = requests.get("https://api.hypixel.net/guild?key=" + api_key + "&id=" + str(guild_id)).json()
+    member_id = 0
+    gExp = []
+    for i in range(len(guild['guild']['members'])):
+        total = 0
+        if guild['guild']['members'][i]["uuid"] == uuid:
+            for x in range(7):
+                f = list(guild['guild']['members'][i]['expHistory'].values())
+                total += f[x]
+            gExp.append(total)
+            member_id += i
+    if int(gExp[0]) >= 100000:
+        if guild['guild']['members'][member_id]['rank'] == "Member":
+            return 1
+        else:
+            return 2
+    else:
+        if guild['guild']['members'][member_id]['rank'] == "Veteran":
+            return 3
+        else:
+            return 4
 
 
 def name_to_uuid(name):
@@ -172,7 +213,6 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                         await member.add_roles(member_role)
                         await member.remove_roles(nepreverjeni_role)
                         await log_channel.send(f"**Preveril** `{member}` kot `{minecraft_name}`!")
-                        await member.edit(nick=f"{minecraft_name} [0]")
                         await self.updateMember(ctx, update_name, member)
                         return
                     else:
@@ -186,7 +226,6 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                         await log_channel.send(f"**Preveril** `{member}` kot `{minecraft_name}`!")
                         await member.add_roles(member_role)
                         await member.remove_roles(nepreverjeni_role)
-                        await member.edit(nick=f"{minecraft_name} [0]")
                         await self.updateMember(ctx, update_name, member)
                         return
                     else:
@@ -198,11 +237,44 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                     await log_channel.send(f"**Preveril** `{member}` kot `{minecraft_name}`!")
                     await member.add_roles(member_role)
                     await member.remove_roles(nepreverjeni_role)
-                    await member.edit(nick=f"{minecraft_name} [0]")
                     await self.updateMember(ctx, update_name, member)
 
             except HypixelApiError as error:
                 await ctx.send(f"Napaka: {error}")
+
+        @self.command(help="Preimenuje osebo.", pass_context=True)
+        @commands.has_role(officer_role)
+        async def rename(ctx: discord.ext.commands.context.Context, minecraft_name, member: discord.Member = None):
+            if not channelSuitableForCommands(ctx.channel.id):
+                return
+
+            if member is None:
+                member = ctx.author
+
+            display_name = f"{minecraft_name} [0]"
+
+            await self.updateMember(ctx, display_name, member)
+
+        @self.command(help="Uklopi ali izklopi auto-updateall.", pass_context=True)
+        @commands.has_permissions(administrator=True)
+        async def autoupdate(ctx: discord.ext.commands.context.Context, args="status"):
+            if not channelSuitableForCommands(ctx.channel.id):
+                return
+            args.lower()
+            with open(f"{directory_path}/settings.json") as f:
+                json_data = json.load(f)
+            if args == "on":
+                json_data["config"]["auto_update"] = "True"
+                await ctx.send("```diff\n+ Auto Update enabled```")
+            if args == "off":
+                json_data["config"]["auto_update"] = "False"
+                await ctx.send("```diff\n- Auto Update disabled```")
+            if args == "status":
+                await ctx.send("`AutoUpdate status:` " + str(json_data["config"]["auto_update"]))
+
+            json_object = json.dumps(json_data, indent=4)
+            with open(f"{directory_path}/settings.json", "w") as outfile:
+                outfile.write(json_object)
 
         @self.command(pass_context=True)
         @commands.has_permissions(administrator=True)
@@ -240,35 +312,43 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         @tasks.loop(minutes=60.0)
         async def task(ctx: discord.ext.commands.context.Context):
             log_channel = self.get_channel(logging_channel)
+            with open(f"{directory_path}/settings.json") as f:
+                json_data = json.load(f)
             # sam da vidm če ta srane dela dej stran če js nism
-            print(f"Check time: {datetime.now().hour}")
             if datetime.now().hour == 3:
-                await log_channel.send("**Updateall started** *autoupdate*")
-                if not channelSuitableForCommands(ctx.channel.id):
+                if json_data["config"]["auto_update"] == "True":
+                    await log_channel.send("**Updateall started** *autoupdate*")
+                    if not channelSuitableForCommands(ctx.channel.id):
+                        return
+                    for member in ctx.guild.members:
+                        try:
+                            await self.updateMember(ctx, member.display_name, member)
+                        except Exception as exception:
+                            await log_channel.send(f"Python exception occurred for user {member.display_name}")
+                            print(exception)
+                    await log_channel.send("**Updateall ended** *autoupdate*")
+                else:
                     return
-                for member in ctx.guild.members:
-                    try:
-                        await self.updateMember(ctx, member.display_name, member)
-                    except Exception as exception:
-                        await log_channel.send(f"Python exception occurred for user {member.display_name}")
-                        print(exception)
-                await log_channel.send("**Updateall ended** *autoupdate*")
 
     # function to update members   Won't work if user doesn't have "Member" role
     async def updateMember(self, ctx, display_name, member):
         member_role = discord.utils.find(lambda r: r.name == 'Member', ctx.message.guild.roles)
         guild_role = discord.utils.find(lambda r: r.name == 'Guild Member', ctx.message.guild.roles)
+        veteran_role = discord.utils.find(lambda r: r.name == 'Veteran', ctx.message.guild.roles)
+
         log_channel = self.get_channel(logging_channel)
         try:
             # check if user has member role
             if member_role not in member.roles:
                 return
-            name = str(display_name)
-            name_split = name.split()
-            uuid = name_to_uuid(name_split[0])
+            discord_nick = str(display_name)
+            name_split = discord_nick.split()
+            name = name_split[0]
+            uuid = name_to_uuid(name)
+            veteran_num = is_veteran(name)
             # if name doesn't exist unverifyes user
             if uuid == "Error":
-                await log_channel.send(f"`{name_split[0]}` ne obstaja. Od-preveril `{member}`")
+                await log_channel.send(f"`{name}` ne obstaja. Od-preveril `{member}`")
                 for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++", "Member", "Guild Member"]:
                     await member.remove_roles(await getRoleByName(ctx.guild, role_name))
                 await member.add_roles(await getRoleByName(ctx.guild, "Nepreverjeni"))
@@ -300,11 +380,45 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 if guild.guild_id == hypixel_guild_id:
                     await member.add_roles(await getRoleByName(ctx.guild, "Guild Member"))
                     await log_channel.send(f"Dodal `Guild Member` `{player.username}`.")
+                    await ctx.send(f"Dodal `Guild Member` `{player.username}`.")
+
+            if veteran_role in member.roles:
+                if veteran_num in {3, 4}:
+                    await member.remove_roles(await getRoleByName(ctx.guild, "Veteran"))
+                    await ctx.send(f"Odstranil `Veteran` od `{player.username}`.")
+                    if veteran_num == 3:
+                        await log_channel.send(
+                            f"Odstranil `Veteran` od `{player.username}`. <@&{master_role_id}> ostrani mu ga na Hypixlu.")
+                    if veteran_num == 4:
+                        await log_channel.send(
+                            f"Odstranil `Veteran` od `{player.username}`. Že ima Member ali višje na Hypixlu.")
+
+                if veteran_num in {1, 2}:
+                    await member.add_roles(await getRoleByName(ctx.guild, "Veteran"))
+                    await ctx.send(f"Dodal `Veteran` `{player.username}`.")
+                    if veteran_num == 1:
+                        await log_channel.send(
+                            f"Dodal `Veteran` `{player.username}`. <@&{master_role_id}> dodaj mu ga na Hypixlu.")
+                    if veteran_num == 2:
+                        await log_channel.send(
+                            f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
+
             # check if someone with guild member role isn't in guild then remove all non moderator guild roles
             if guild_role in member.roles:
                 if guild.guild_id != hypixel_guild_id:
-                    await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"), await getRoleByName(ctx.guild, "Veteran"), await getRoleByName(ctx.guild, "Professional"))
+                    await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"),
+                                              await getRoleByName(ctx.guild, "Veteran"),
+                                              await getRoleByName(ctx.guild, "Professional"))
                     await log_channel.send(f"Odstranil use Guild role od `{player.username}`.")
+                    await ctx.send(f"Odstranil use Guild role od `{player.username}`.")
+                if veteran_num in {1, 2}:
+                    await member.add_roles(await getRoleByName(ctx.guild, "Veteran"))
+                    await log_channel.send(f"Dodal `Veteran` `{player.username}`.")
+                    if veteran_num == 1:
+                        await ctx.send(
+                            f"Dodal `Veteran` `{player.username}`. <@&{master_role_id}> dodaj mu ga na Hypixlu.")
+                    if veteran_num == 2:
+                        await ctx.send(f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
 
             await member.edit(nick=f"{player.username} [{player.network_level}]")
 
