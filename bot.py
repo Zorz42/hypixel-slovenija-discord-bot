@@ -376,49 +376,38 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             if player.rank == HypixelRank.MVP_PLUS_PLUS:
                 await member.add_roles(await getRoleByName(ctx.guild, "MVP++"))
             # check if member is in guild (check users without "Guild Member" role)
-            if guild_role not in member.roles:
-                if guild.guild_id == hypixel_guild_id:
-                    await member.add_roles(await getRoleByName(ctx.guild, "Guild Member"))
-                    await log_channel.send(f"Dodal `Guild Member` `{player.username}`.")
-                    await ctx.send(f"Dodal `Guild Member` `{player.username}`.")
+            if guild.guild_id == hypixel_guild_id:
+                await member.add_roles(await getRoleByName(ctx.guild, "Guild Member"))
+                await log_channel.send(f"Dodal `Guild Member` `{player.username}`.")
+                await ctx.send(f"Dodal `Guild Member` `{player.username}`.")
 
-            if veteran_role in member.roles:
-                if veteran_num in {3, 4}:
-                    await member.remove_roles(await getRoleByName(ctx.guild, "Veteran"))
-                    await ctx.send(f"Odstranil `Veteran` od `{player.username}`.")
-                    if veteran_num == 3:
-                        await log_channel.send(
-                            f"Odstranil `Veteran` od `{player.username}`. <@&{master_role_id}> ostrani mu ga na Hypixlu.")
-                    if veteran_num == 4:
-                        await log_channel.send(
-                            f"Odstranil `Veteran` od `{player.username}`. Že ima Member ali višje na Hypixlu.")
+            if veteran_num in {3, 4}:
+                await member.remove_roles(await getRoleByName(ctx.guild, "Veteran"))
+                await ctx.send(f"Odstranil `Veteran` od `{player.username}`.")
+                if veteran_num == 3:
+                    await log_channel.send(
+                        f"Odstranil `Veteran` od `{player.username}`. <@&{master_role_id}> ostrani mu ga na Hypixlu.")
+                if veteran_num == 4:
+                    await log_channel.send(
+                        f"Odstranil `Veteran` od `{player.username}`. Že ima Member ali višje na Hypixlu.")
 
-                if veteran_num in {1, 2}:
-                    await member.add_roles(await getRoleByName(ctx.guild, "Veteran"))
-                    await ctx.send(f"Dodal `Veteran` `{player.username}`.")
-                    if veteran_num == 1:
-                        await log_channel.send(
-                            f"Dodal `Veteran` `{player.username}`. <@&{master_role_id}> dodaj mu ga na Hypixlu.")
-                    if veteran_num == 2:
-                        await log_channel.send(
-                            f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
+            if veteran_num in {1, 2}:
+                await member.add_roles(await getRoleByName(ctx.guild, "Veteran"))
+                await ctx.send(f"Dodal `Veteran` `{player.username}`.")
+                if veteran_num == 1:
+                    await log_channel.send(
+                        f"Dodal `Veteran` `{player.username}`. <@&{master_role_id}> dodaj mu ga na Hypixlu.")
+                if veteran_num == 2:
+                    await log_channel.send(
+                        f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
 
             # check if someone with guild member role isn't in guild then remove all non moderator guild roles
-            if guild_role in member.roles:
-                if guild.guild_id != hypixel_guild_id:
-                    await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"),
-                                              await getRoleByName(ctx.guild, "Veteran"),
-                                              await getRoleByName(ctx.guild, "Professional"))
-                    await log_channel.send(f"Odstranil use Guild role od `{player.username}`.")
-                    await ctx.send(f"Odstranil use Guild role od `{player.username}`.")
-                if veteran_num in {1, 2}:
-                    await member.add_roles(await getRoleByName(ctx.guild, "Veteran"))
-                    await log_channel.send(f"Dodal `Veteran` `{player.username}`.")
-                    if veteran_num == 1:
-                        await ctx.send(
-                            f"Dodal `Veteran` `{player.username}`. <@&{master_role_id}> dodaj mu ga na Hypixlu.")
-                    if veteran_num == 2:
-                        await ctx.send(f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
+            if guild.guild_id != hypixel_guild_id:
+                await member.remove_roles(await getRoleByName(ctx.guild, "Guild Member"),
+                                          await getRoleByName(ctx.guild, "Veteran"),
+                                          await getRoleByName(ctx.guild, "Professional"))
+                await log_channel.send(f"Odstranil use Guild role od `{player.username}`.")
+                await ctx.send(f"Odstranil use Guild role od `{player.username}`.")
 
             await member.edit(nick=f"{player.username} [{player.network_level}]")
 
