@@ -15,10 +15,10 @@ class Settings:
                 "admin_role_id": "insert admin role ID",
                 "auto_update": "False",  # leave this line alone in settings.json
                 "bot_channels": {
-                    "1": "874233307238367299",
-                    "2": "874233307238367299",
-                    "3": "874233307238367299",
-                    "4": "874233307238367299"
+                    "1": "Channel 1",
+                    "2": "Channel 2",
+                    "3": "CHannel 3",
+                    "4": "Channel 4"
                 }
             }
         }
