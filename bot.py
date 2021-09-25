@@ -1,9 +1,9 @@
 import discord
 import asyncio
 import time
+import simplejson.errors
 from mojang import MojangAPI
 from discord.ext import commands
-import simplejson.errors
 
 from settings import *
 from hypixel_api import *
@@ -297,19 +297,20 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         guild_role = discord.utils.find(lambda r: r.name == 'Guild Member', ctx.message.guild.roles)
         veteran_role = discord.utils.find(lambda r: r.name == 'Veteran', ctx.message.guild.roles)
 
+        discord_nick = str(display_name)
+        name_split = discord_nick.split()
+        name = name_split[0]
+        uuid = name_to_uuid(name)
         log_channel = self.get_channel(logging_channel)
         try:
             # check if user has member role
             if member_role not in member.roles:
                 return
-            discord_nick = str(display_name)
-            name_split = discord_nick.split()
-            name = name_split[0]
-            uuid = name_to_uuid(name)
             # if name doesn't exist unverifyes user
             if uuid == "Error":
                 await log_channel.send(f"`{name}` ne obstaja. Od-preveril `{member}`")
-                for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++", "Member", "Guild Member"]:
+                for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++", "Member", "Guild Member", "Veteran",
+                                  "Professional"]:
                     await member.remove_roles(await get_role_by_name(ctx.guild, role_name))
                 await member.add_roles(await get_role_by_name(ctx.guild, "Nepreverjeni"))
                 await member.edit(nick="")
@@ -376,8 +377,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                         await log_channel.send(
                             f"Dodal `Veteran` `{player.username}`. Že ima Veteran ali višje na Hypixlu.")
 
-                # check if someone with guild member role isn't in guild then remove all non moderator guild roles
-
+            # check if someone with guild member role isn't in guild then remove all non moderator guild roles
             if guild_role in member.roles and guild is None or (
                     guild is not None and guild.guild_id != hypixel_guild_id):
                 await member.remove_roles(await get_role_by_name(ctx.guild, "Guild Member"),
@@ -397,20 +397,43 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                                    f"{' in `MVP++`' if player.rank == HypixelRank.MVP_PLUS_PLUS else ''}")
 
         except HypixelApiError as error:
-            await ctx.send(f"Napaka: {error}")
+            # Un-Verify user if Minecraft account exists but never logged on Hypixel
+            if str(error) == "This player does not exist":
+                await log_channel.send(f"`{name}` ne obstaja(nikoli prijavljen na Hypixel). Od-preveril `{member}`")
+                for role_name in ["VIP", "VIP+", "MVP", "MVP+", "MVP++", "Member", "Guild Member", "Veteran",
+                                  "Professional"]:
+                    await member.remove_roles(await get_role_by_name(ctx.guild, role_name))
+                await member.add_roles(await get_role_by_name(ctx.guild, "Nepreverjeni"))
+                await member.edit(nick="")
+                dm = await member.create_dm()
+                embed = discord.Embed(title="Bil si od-preverjen na Hypixel Slovenija", color=0x89ff00)
+                embed.set_thumbnail(
+                    url="https://cdn.discordapp.com/icons/794995068720119849/d4339c7041f4fe3b6473f0ab3ead56b1.webp"
+                        "?size=1024")
+                embed.add_field(name="Zakaj?",
+                                value="Ker se še nikoli nisi povezal na Hypixel ali pa je prišlo do napake",
+                                inline=True)
+                embed.add_field(name="Kako se lahko spet preverim?", value=f"Poveši se na: `mc.hypixel.net`"
+                                                                           f"\nPotem pa sledi navodilom v <#{verify_channel}>",
+                                inline=True)
+                embed.set_footer(text="-Hypixel Slovenija ekipa")
+                await dm.send(embed=embed)
+            # Print error
+            else:
+                await ctx.send(f"Napaka: {error}")
 
+    # Error feedback
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
-        """A global error handler cog."""
 
         if isinstance(error, commands.CommandNotFound):
-            return  # Return because we don't want to show an error for every command not found
+            return
         elif isinstance(error, commands.CommandOnCooldown):
             message = f"Ta ukaz lahko uporabiš vako minuto. Poiskusi ponovno po {round(error.retry_after, 1)} sekundah."
         elif isinstance(error, commands.MissingPermissions):
             message = "Nimaš dovoljenja za uporabo tega ukaza!"
         elif isinstance(error, commands.UserInputError):
-            message = "Nisi napisal vseh argumentov "
+            message = "Nisi napisal vseh argumentov ali pa so ti napačni"
         else:
             message = "Prišlo je do napake."
 
