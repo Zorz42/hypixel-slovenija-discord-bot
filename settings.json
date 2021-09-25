@@ -1,17 +1,18 @@
 {
-    "discord_key": "TOKEN",
-    "hypixel_key": "KEY",
+    "discord_key": "ODc0MjMyMjA3OTYxNjMyNzY4.YRD-MA.6CjfY0baB755p16137zVflzWtxY",
+    "hypixel_key": "38d0bc24-560e-434c-af5b-c7fdcda2efbe",
     "config": {
-        "logging_channel_id": "886285830950383687",
-        "officer_role_id": "798483000404869121",
+        "logging_channel_id": "874233307548753934",
+        "officer_role_id": "874233306424684590",
         "hypixel_guild_id": "5ff980828ea8c9e004b008e2",
-        "admin_role_id": "795012124967567390",
-        "auto_update": "False",
+        "admin_role_id": "874233306424684591",
+        "auto_update": "True",
+        "verify_channel_id": "874233306424684594",
         "bot_channels": {
-            "1": "860928478358142996",
-            "2": "798480649316728833",
-            "3": "795010633405038632",
-            "4": "798178971887599626"
+            "1": "874233307238367299",
+            "2": "874233307041267748",
+            "3": "874233306672156701",
+            "4": "874233306424684594"
         }
     }
 }

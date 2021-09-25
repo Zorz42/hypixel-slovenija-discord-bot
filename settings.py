@@ -14,6 +14,7 @@ class Settings:
                 "hypixel_guild_id": "insert Hypixel guild ID",
                 "admin_role_id": "insert admin role ID",
                 "auto_update": "False",  # leave this line alone in settings.json
+                "verify_channel_id": "insert verifycation channel",
                 "bot_channels": {
                     "1": "Channel 1",
                     "2": "Channel 2",
