@@ -398,3 +398,21 @@ class HypixelSloveniaDiscordBot(commands.Bot):
 
         except HypixelApiError as error:
             await ctx.send(f"Napaka: {error}")
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        """A global error handler cog."""
+
+        if isinstance(error, commands.CommandNotFound):
+            return  # Return because we don't want to show an error for every command not found
+        elif isinstance(error, commands.CommandOnCooldown):
+            message = f"Ta ukaz lahko uporabiš vako minuto. Poiskusi ponovno po {round(error.retry_after, 1)} sekundah."
+        elif isinstance(error, commands.MissingPermissions):
+            message = "Nimaš dovoljenja za uporabo tega ukaza!"
+        elif isinstance(error, commands.UserInputError):
+            message = "Nisi napisal vseh argumentov "
+        else:
+            message = "Prišlo je do napake."
+
+        await ctx.send(message, delete_after=5)
+        await ctx.message.delete(delay=5)
