@@ -320,7 +320,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                 embed.add_field(name="Zakaj?",
                                 value="Očitno si si spremenil svoje Minecraft ime ali pa je prišlo do napake",
                                 inline=True)
-                embed.add_field(name="Kako se lahko spet preverim?", value="Sledi navodilom\nv <#874233306424684594>",
+                embed.add_field(name="Kako se lahko spet preverim?", value=f"Sledi navodilom\nv <#{verify_channel}>",
                                 inline=True)
                 embed.set_footer(text="-Hypixel Slovenija ekipa")
                 await dm.send(embed=embed)
