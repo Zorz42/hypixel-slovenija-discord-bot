@@ -17,6 +17,7 @@ class StopAction(Enum):
 
 
 # read & set config from settings.py
+bot_version = "2.2"
 directory_path = os.getcwd()
 with open(f"{directory_path}/settings.json") as f:
     json_config_data = json.load(f)["config"]
@@ -57,11 +58,6 @@ def is_veteran(name):
             return 1
         else:
             return 2
-    else:
-        if guild['guild']['members'][member_id]['rank'] == "Veteran":
-            return 3
-        else:
-            return 4
 
 
 def name_to_uuid(name):
@@ -291,6 +287,13 @@ class HypixelSloveniaDiscordBot(commands.Bot):
             await log_channel.send("Restarting")
             await ctx.bot.close()
 
+        @self.command(pass_context=True)
+        @commands.has_permissions(administrator=True)
+        async def version(ctx: discord.ext.commands.context.Context):
+            if not channel_suitable_for_commands(ctx.channel.id):
+                return
+            await ctx.send(f"Bot Version: `{bot_version}`")
+
     # function to update members   Won't work if user doesn't have "Member" role
     async def update_member(self, ctx, display_name, member):
         member_role = discord.utils.find(lambda r: r.name == 'Member', ctx.message.guild.roles)
@@ -355,19 +358,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
                     await log_channel.send(f"Dodal `Guild Member` `{player.username}`.")
                     await ctx.send(f"Dodal `Guild Member` `{player.username}`.")
 
-                if veteran_role in member.roles:
-                    if veteran_num in {3, 4}:
-                        await member.remove_roles(await get_role_by_name(ctx.guild, "Veteran"))
-                        await ctx.send(f"Odstranil `Veteran` od `{player.username}`.")
-                        if veteran_num == 3:
-                            await log_channel.send(
-                                f"Odstranil `Veteran` od `{player.username}`. <@&{master_role_id}> ostrani mu ga na "
-                                f"Hypixlu.")
-                        if veteran_num == 4:
-                            await log_channel.send(
-                                f"Odstranil `Veteran` od `{player.username}`. Že ima Member ali višje na Hypixlu.")
-
-                elif veteran_role not in member.roles and veteran_num in {1, 2}:
+                if veteran_role not in member.roles and veteran_num in {1, 2}:
                     await member.add_roles(await get_role_by_name(ctx.guild, "Veteran"))
                     await ctx.send(f"Dodal `Veteran` `{player.username}`.")
                     if veteran_num == 1:
