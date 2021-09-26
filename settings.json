@@ -7,6 +7,7 @@
         "hypixel_guild_id": "5ff980828ea8c9e004b008e2",
         "admin_role_id": "795012124967567390",
         "auto_update": "False",
+        "verify_channel_id": "798178971887599626",
         "bot_channels": {
             "1": "860928478358142996",
             "2": "798480649316728833",

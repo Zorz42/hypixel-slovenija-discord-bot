@@ -49,6 +49,11 @@ class HypixelPlayer:
         self.uuid = data["player"]["uuid"]
 
 
+class Guild:
+    def __init__(self, data: dict):
+        self.guild_id = data["guild"]["_id"]
+
+
 class HypixelApi:
     def __init__(self):
         self.__key = ""
@@ -66,6 +71,10 @@ class HypixelApi:
         url = f"https://api.hypixel.net/player?key={self.__key}&name={name}"
         return requests.get(url).json()
 
+    async def __fetchGuildFromUUID(self, uuid):
+        url = f"https://api.hypixel.net/guild?key={self.__key}&player={uuid}"
+        return requests.get(url).json()
+
     async def __savePlayerData(self, data, uuid):
         if data["success"]:
             if data["player"] is None:
@@ -75,6 +84,22 @@ class HypixelApi:
             cause = data["cause"]
             if cause == "You have already looked up this name recently":
                 if uuid not in self.__saved_players.keys():
+                    raise HypixelApiError("Cannot access player data and there is no fallback data")
+                else:
+                    return
+            else:
+                raise HypixelApiError(cause)
+
+    async def __saveGuildData(self, data, uuid):
+        if data["success"]:
+            if data["guild"] is None:
+                self.__saved_guilds["null"] = "null"
+            else:
+                self.__saved_guilds[data["guild"]["_id"]] = Guild(data)
+        else:
+            cause = data["cause"]
+            if cause == "You have already looked up this name recently":
+                if uuid not in self.__saved_guilds.keys():
                     raise HypixelApiError("Cannot access player data and there is no fallback data")
                 else:
                     return
@@ -94,3 +119,12 @@ class HypixelApi:
         await self.__savePlayerData(data, uuid)
 
         return self.__saved_players[uuid]
+
+    async def getGuildByUUID(self, uuid) -> Guild:
+        data = await self.__fetchGuildFromUUID(uuid)
+
+        await self.__saveGuildData(data, uuid)
+        try:
+            return self.__saved_guilds[data["guild"]["_id"]]
+        except TypeError:
+            pass
