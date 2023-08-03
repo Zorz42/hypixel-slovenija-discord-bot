@@ -1,5 +1,17 @@
+import asyncio
 import os
 import json
+from enum import Enum, auto
+
+
+class DiscordChannel(Enum):
+    LOGGING = auto()
+    VERIFY = auto()
+
+
+class DiscordRole(Enum):
+    ADMIN = auto()
+    OFFICER = auto()
 
 
 class Settings:
@@ -8,20 +20,19 @@ class Settings:
         self.__settings = {
             "discord_key": "insert your discord bot key here",
             "hypixel_key": "insert your hypixel api key here",
-            "config": {
-                "logging_channel_id": "insert logging channel ID",
-                "officer_role_id": "insert Officer role ID",
-                "hypixel_guild_id": "insert Hypixel guild ID",
-                "admin_role_id": "insert admin role ID",
-                "auto_update": "False",  # leave this line alone in settings.json
-                "verify_channel_id": "insert verifycation channel",
-                "bot_channels": {
-                    "1": "Channel 1",
-                    "2": "Channel 2",
-                    "3": "CHannel 3",
-                    "4": "Channel 4"
-                }
-            }
+
+            "hypixel_guild_id": "",  # insert Hypixel guild ID
+
+            "logging_channel_id": 0,  # insert logging channel ID
+            "verify_channel_id": 0,  # insert verification channel
+
+            "officer_role_id": 0,  # insert Officer role ID
+            "admin_role_id": 0,  # insert admin role ID
+
+            "auto_update": False,  # leave this line alone in settings.json
+            "bot_channel_ids": [],
+
+            "bot_version": "3.0",
         }
 
     async def save(self):
@@ -34,6 +45,10 @@ class Settings:
         if os.path.exists(filename):
             with open(filename, "r") as settings_file:
                 self.__settings = {**self.__settings, **json.load(settings_file)}
+        else:
+            with open(filename, "w") as fw:
+                fw.write(json.dumps(self.__settings, indent=4))
+            exit(f"Config file {filename} not found. Generated a new one.")
 
         if self.__settings["discord_key"] == "insert your discord bot key here":
             print("Insert discord_key into settings.json")
@@ -53,3 +68,19 @@ class Settings:
     async def getHypixelKey(self):
         return self.__settings["hypixel_key"]
 
+    def get_bot_channels(self) -> list[str]:
+        return self.__settings.get("bot_channel_ids")
+
+    def get_discord_channel_id(self, channel: DiscordChannel) -> int:
+        config_channel_name = channel.name.lower() + "_channel_id"
+        return self.__settings.get(config_channel_name)
+
+    def get_discord_role_id(self, channel: DiscordRole) -> int:
+        config_role_name = channel.name.lower() + "_role_id"
+        return self.__settings.get(config_role_name)
+
+    def get_guild_id(self) -> str:
+        return self.__settings.get("hypixel_guild_id")
+
+    def get_bot_version(self) -> str:
+        return self.__settings.get("bot_version")
