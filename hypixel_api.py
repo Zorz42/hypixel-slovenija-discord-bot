@@ -60,22 +60,22 @@ class HypixelApi:
         self.__saved_players = {}
         self.__saved_guilds = {}
 
-    async def setKey(self, key: str):
+    async def set_key(self, key: str):
         self.__key = key
 
-    async def __fetchDataFromUUID(self, uuid):
+    async def __fetch_player_data_from_uuid(self, uuid):
         url = f"https://api.hypixel.net/player?key={self.__key}&uuid={uuid}"
         return requests.get(url).json()
 
-    async def __fetchDataFromName(self, name):
+    async def __fetch_player_data_from_name(self, name):
         url = f"https://api.hypixel.net/player?key={self.__key}&name={name}"
         return requests.get(url).json()
 
-    async def __fetchGuildFromUUID(self, uuid):
+    async def __fetch_guild_from_player_uuid(self, uuid):
         url = f"https://api.hypixel.net/guild?key={self.__key}&player={uuid}"
         return requests.get(url).json()
 
-    async def __savePlayerData(self, data, uuid):
+    async def __save_player_data(self, data, uuid):
         if data["success"]:
             if data["player"] is None:
                 raise HypixelApiError("This player does not exist")
@@ -90,7 +90,7 @@ class HypixelApi:
             else:
                 raise HypixelApiError(cause)
 
-    async def __saveGuildData(self, data, uuid):
+    async def __save_guild_data(self, data, uuid):
         if data["success"]:
             if data["guild"] is None:
                 self.__saved_guilds["null"] = "null"
@@ -106,24 +106,24 @@ class HypixelApi:
             else:
                 raise HypixelApiError(cause)
 
-    async def getPlayerByName(self, name):
-        data = await self.__fetchDataFromName(name)
+    async def get_player_by_name(self, name):
+        data = await self.__fetch_player_data_from_name(name)
 
-        await self.__savePlayerData(data, None)
+        await self.__save_player_data(data, None)
 
         return self.__saved_players[data["player"]["uuid"]]
 
-    async def getPlayerByUUID(self, uuid) -> HypixelPlayer:
-        data = await self.__fetchDataFromUUID(uuid)
+    async def get_player_by_uuid(self, uuid) -> HypixelPlayer:
+        data = await self.__fetch_player_data_from_uuid(uuid)
 
-        await self.__savePlayerData(data, uuid)
+        await self.__save_player_data(data, uuid)
 
         return self.__saved_players[uuid]
 
-    async def getGuildByUUID(self, uuid) -> Guild:
-        data = await self.__fetchGuildFromUUID(uuid)
+    async def get_guild_by_player_uuid(self, uuid) -> Guild:
+        data = await self.__fetch_guild_from_player_uuid(uuid)
 
-        await self.__saveGuildData(data, uuid)
+        await self.__save_guild_data(data, uuid)
         try:
             return self.__saved_guilds[data["guild"]["_id"]]
         except TypeError:
