@@ -1,6 +1,8 @@
+import json
 import math
 from dataclasses import dataclass
 from enum import Enum, auto
+from pprint import pprint
 
 
 class HypixelRank(Enum):
@@ -33,6 +35,9 @@ class HypixelPlayer:
     rank: HypixelRank
     discord: str
     uuid: str
+    bedwars_level: int
+    skywars_level: int
+    duels_wins: int
 
     def __init__(self, data: dict):
         self.username = data["player"]["displayname"]
@@ -55,3 +60,7 @@ class HypixelPlayer:
             pass
 
         self.uuid = data["player"]["uuid"]
+        self.skywars_level = int(data.get("player").get("achievements").get("skywars_you_re_a_star"))
+        self.bedwars_level = int(data.get("player").get("achievements").get("bedwars_level"))
+        self.duels_wins = int(data.get("player").get("stats").get("Duels").get("wins"))
+
