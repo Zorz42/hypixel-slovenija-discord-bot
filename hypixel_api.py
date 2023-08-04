@@ -61,6 +61,7 @@ class HypixelApi:
             else:
                 raise HypixelApiError(cause)
 
+    # TODO: Add cache
     async def get_player_by_name(self, name):
         data = await self.__fetch_player_data_from_name(name)
 

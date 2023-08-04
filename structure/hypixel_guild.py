@@ -40,10 +40,10 @@ class HypixelGuildRank:
 @dataclass
 class HypixelGuild:
     guild_id: str
-    members: list[HypixelGuildMember]
+    members: dict[str, HypixelGuildMember]
 
     def __init__(self, data: dict):
         guild_data: dict = data.get("guild")
         self.guild_id = guild_data.get("_id")
-        self.members = [HypixelGuildMember(raw_member_data) for raw_member_data in guild_data.get("members")]
+        self.members = {raw_member_data.get("uuid"): HypixelGuildMember(raw_member_data) for raw_member_data in guild_data.get("members")}
         self.ranks = [HypixelGuildRank(raw_rank_data) for raw_rank_data in guild_data.get("ranks")]

@@ -1,61 +1,62 @@
 import discord
-import requests
+from discord import Role, Member
+from discord.ext.commands import Context
 from mojang import MojangAPI
 
+from hypixel_api import HypixelApi
 from settings import Settings, DiscordRole
+from structure.hypixel_guild import HypixelGuild
+from structure.misc import VeteranStatus
 
 
-async def member_has_role(member, role_name):
-    for role in member.roles:
-        if role.name == role_name:
-            return True
-    return False
+def member_has_role(member: Member, role_name: str) -> bool:
+    return any(role.name == role_name for role in member.roles)
 
 
-async def get_role_by_name(guild: discord.Guild, role_name):
+async def get_role_by_name(guild: discord.Guild, role_name: str) -> Role:
     for role in guild.roles:
         if role.name == role_name:
             return role
 
 
-async def name_to_uuid(name):
+def name_to_uuid(name: str) -> str:
     return MojangAPI.get_uuid(name)
+
+
+async def remove_guild_roles(ctx: Context, log_channel: discord.TextChannel, member: Member):
+    await member.remove_roles(await get_role_by_name(ctx.guild, "Guild Member"),
+                              await get_role_by_name(ctx.guild, "Veteran"),
+                              await get_role_by_name(ctx.guild, "Professional"))
+    await log_channel.send(f"Odstranil use Guild role od `{member.mention}`.")
+    await ctx.send(f"Odstranil use Guild role od {member.mention}.")
+
+
+async def is_veteran(uuid: str, guild: HypixelGuild) -> VeteranStatus:
+    guild_member = guild.members.get(uuid)
+
+    total_weekly_xp = sum(xp for date, xp in guild_member.exp_history.items())
+
+    if total_weekly_xp >= 100_000:
+        if guild_member.rank == "Member":
+            return VeteranStatus.ADD_MC_DC
+        return VeteranStatus.ADD_DISCORD
+    else:
+        if guild_member.rank == "Veteran":
+            return VeteranStatus.REMOVE_MC_DC
+        return VeteranStatus.REMOVE_DISCORD
 
 
 class Utils:
     settings: Settings
+    api: HypixelApi
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, api: HypixelApi):
         self.settings = settings
-
-    async def is_veteran(self, name) -> int:
-        api_key: str = await self.settings.getHypixelKey()
-        guild_id: str = self.settings.get_guild_id()
-        uuid = name_to_uuid(name)
-        if uuid == "Error":
-            return
-        guild = requests.get("https://api.hypixel.net/guild?key=" + api_key + "&id=" + str(guild_id)).json()
-        member_id = 0
-        g_exp = []
-        for i in range(len(guild['guild']['members'])):
-            total = 0
-            if guild['guild']['members'][i]["uuid"] == uuid:
-                for x in range(7):
-                    f = list(guild['guild']['members'][i]['expHistory'].values())
-                    total += f[x]
-                g_exp.append(total)
-                member_id += i
-        if int(g_exp[0]) >= 100000:
-            if guild['guild']['members'][member_id]['rank'] == "Member":
-                return 1
-            else:
-                return 2
+        self.api = api
 
     def channel_suitable_for_commands(self, channel_id) -> bool:
         return channel_id in self.settings.get_bot_channels()
 
     async def is_officer(self, user):
-        for role in user.roles:
-            if role.id == self.settings.get_discord_role_id(DiscordRole.OFFICER):
-                return True
-        return False
+        officer_role_id = self.settings.get_discord_role_id(DiscordRole.OFFICER)
+        return any(role.id == officer_role_id for role in user.roles)

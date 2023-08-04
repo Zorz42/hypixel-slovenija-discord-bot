@@ -1,14 +1,20 @@
 import math
+from dataclasses import dataclass
 from enum import Enum, auto
 
 
 class HypixelRank(Enum):
-    NON = auto()
-    VIP = auto()
-    VIP_PLUS = auto()
-    MVP = auto()
-    MVP_PLUS = auto()
-    MVP_PLUS_PLUS = auto()
+    NON = None, None
+    VIP = "VIP", "VIP"
+    VIP_PLUS = "VIP_PLUS", "VIP+"
+    MVP = "MVP", "MVP"
+    MVP_PLUS = "MVP_PLUS", "MVP+"
+    MVP_PLUS_PLUS = "SUPERSTAR", "MVP++"
+
+    def __init__(self, *dummy):
+        self.api_name = self.value[0]
+        self.display = self.value[1]
+
 
 
 rank_names = {
@@ -20,7 +26,14 @@ rank_names = {
 }
 
 
+@dataclass
 class HypixelPlayer:
+    username: str
+    network_level: int
+    rank: HypixelRank
+    discord: str
+    uuid: str
+
     def __init__(self, data: dict):
         self.username = data["player"]["displayname"]
         network_experience = data["player"]["networkExp"]

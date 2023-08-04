@@ -12,6 +12,10 @@ class DiscordChannel(Enum):
 class DiscordRole(Enum):
     ADMIN = auto()
     OFFICER = auto()
+    VETERAN = auto()
+    GUILD_MEMBER = auto()
+    MEMBER = auto()
+    UNVERIFIED = auto()
 
 
 class Settings:
@@ -26,11 +30,16 @@ class Settings:
             "logging_channel_id": 0,  # insert logging channel ID
             "verify_channel_id": 0,  # insert verification channel
 
+            "unverified_role_id": 0,
+            "member_role_id": 0,
+            "guild_member_role_id": 0,
+            "veteran_role_id": 0,
             "officer_role_id": 0,  # insert Officer role ID
             "admin_role_id": 0,  # insert admin role ID
 
             "auto_update": False,  # leave this line alone in settings.json
             "bot_channel_ids": [],
+            "discord_server_id": 0,
 
             "bot_version": "3.0",
         }
@@ -84,3 +93,6 @@ class Settings:
 
     def get_bot_version(self) -> str:
         return self.__settings.get("bot_version")
+
+    def get_discord_server_id(self) -> int:
+        return self.__settings.get("discord_server_id")
