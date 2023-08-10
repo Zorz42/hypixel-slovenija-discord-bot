@@ -9,7 +9,8 @@ from discord.ext.commands import Context
 from hypixel_api import *
 from settings import *
 from structure.hypixel_player import HypixelRank
-from util import Utils, get_role_by_name, name_to_uuid, remove_guild_roles, is_veteran
+from structure.misc import GuildDiscordSyncStatus
+from util import Utils, get_role_by_name, name_to_uuid, remove_guild_roles, is_veteran, is_professional
 
 
 class StopAction(Enum):
@@ -58,9 +59,10 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         self.verify_channel_id = self.settings.get_discord_channel_id(DiscordChannel.VERIFY)
 
         self.unverified_role_id = self.settings.get_discord_role_id(DiscordRole.UNVERIFIED)
+        self.member_role_id = self.settings.get_discord_role_id(DiscordRole.MEMBER)
         self.guild_member_role_id = self.settings.get_discord_role_id(DiscordRole.GUILD_MEMBER)
         self.veteran_role_id = self.settings.get_discord_role_id(DiscordRole.VETERAN)
-        self.member_role_id = self.settings.get_discord_role_id(DiscordRole.MEMBER)
+        self.professional_role_id = self.settings.get_discord_role_id(DiscordRole.PROFESSIONAL)
         self.officer_role_id = self.settings.get_discord_role_id(DiscordRole.OFFICER)
         self.admin_role_id = self.settings.get_discord_role_id(DiscordRole.ADMIN)
 
@@ -119,23 +121,22 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         @self.command(pass_context=True)
         @commands.has_permissions(administrator=True)
         async def updateall(ctx: Context):
-            await self.log_channel.send("**Updateall started**")
-            start_time = time.time()
             if not self.utils.channel_suitable_for_commands(ctx.channel.id):
                 return
+            await self.log_channel.send("**Updateall started**")
+            start_time = time.time()
             for member in ctx.guild.members:
                 try:
                     await self.update_member(ctx, member.display_name, member)
                 except Exception as exception:
                     await ctx.send(f"Python exception occurred for user {member.display_name}. Error: {exception}")
             await ctx.send(f"Updated all linked players!")
-            await self.log_channel.send(f"**Updateall ended** *Porabil: {time.time() - start_time}*")
+            await self.log_channel.send(f"**Updateall ended** *Porabil: {time.time() - start_time}s*")
 
         # verify
         @self.command(help="Preveri se", pass_context=True, aliases=["p"])
         @commands.has_any_role(self.admin_role_id, self.officer_role_id, self.unverified_role_id)
         async def preveri(ctx: Context, minecraft_name, member: discord.Member = None):
-            print("Verification started")
             member_role = ctx.guild.get_role(self.member_role_id)
             unverified_role = ctx.guild.get_role(self.unverified_role_id)
 
@@ -246,7 +247,6 @@ class HypixelSloveniaDiscordBot(commands.Bot):
 
     # function to update members   Won't work if user doesn't have "Member" role
     async def update_member(self, ctx: Context, discord_nick: str, member: Member):
-        print("update_member")
         member_role = ctx.guild.get_role(self.member_role_id)
         member_is_owner = member.id == ctx.guild.owner_id
 
@@ -335,25 +335,37 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         guild = await self.hypixel_api.get_guild_by_player_uuid(player.uuid)
         guild_member_role = ctx.guild.get_role(self.guild_member_role_id)
         veteran_role = ctx.guild.get_role(self.veteran_role_id)
+        professional_role = ctx.guild.get_role(self.professional_role_id)
 
         if guild is None or guild.guild_id != self.hypixel_guild_id:
             await remove_guild_roles(ctx, self.log_channel, member)
 
         veteran_status = await is_veteran(player.uuid, guild)
+        professional_status = GuildDiscordSyncStatus.REMOVE_DISCORD
+
+        if veteran_status.meets_requirements:
+            professional_status = await is_professional(player, guild)
 
         if guild_member_role not in member.roles:
             await member.add_roles(guild_member_role)
             await self.log_channel.send(f"Dodal `Guild Member` {member.mention}.")
             await ctx.send(f"Dodal `Guild Member` {member.mention}`.")
 
-        elif veteran_role not in member.roles and veteran_status.is_veteran:
+        if veteran_role not in member.roles and veteran_status.meets_requirements:
             await member.add_roles(veteran_role)
             await ctx.send(f"Dodal `Veteran` {member.mention}.")
             await self.log_channel.send(f"Dodal `Veteran` {member.mention}.")
+        if veteran_status.update_mc:
+            await self.log_channel.send(
+                f"Dodaj `Veteran` `{player.username}` na Hypixlu. <@&{self.admin_role_id}>")
 
-            if veteran_status.update_mc:
-                await self.log_channel.send(
-                    f"Dodaj `Veteran` `{player.username}` na Hypixlu. <@&{self.admin_role_id}>")
+        if professional_role not in member.roles and professional_status.meets_requirements:
+            await member.add_roles(professional_role)
+            await ctx.send(f"Dodal `Professional` {member.mention}.")
+            await self.log_channel.send(f"Dodal `Professional` {member.mention}.")
+        if professional_status.update_mc:
+            await self.log_channel.send(
+                f"Dodaj `Professional` `{player.username}` na Hypixlu. <@&{self.admin_role_id}>")
 
     # Error feedback
     @commands.Cog.listener()
@@ -370,6 +382,6 @@ class HypixelSloveniaDiscordBot(commands.Bot):
         else:
             message = "Prišlo je do napake."
 
-        await self.log_channel.send(f"Errror {ctx.author}, {ctx.message.content}: {error}")
+        await self.log_channel.send(f"Error {ctx.author}, {ctx.message.content}: {error}")
         await ctx.send(message, delete_after=5)
         await ctx.message.delete(delay=5)

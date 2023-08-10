@@ -6,7 +6,8 @@ from mojang import MojangAPI
 from hypixel_api import HypixelApi
 from settings import Settings, DiscordRole
 from structure.hypixel_guild import HypixelGuild
-from structure.misc import VeteranStatus
+from structure.hypixel_player import HypixelPlayer
+from structure.misc import GuildDiscordSyncStatus
 
 
 def member_has_role(member: Member, role_name: str) -> bool:
@@ -20,6 +21,7 @@ async def get_role_by_name(guild: discord.Guild, role_name: str) -> Role:
 
 
 def name_to_uuid(name: str) -> str:
+    # TODO: Add file cache maybe?
     return MojangAPI.get_uuid(name)
 
 
@@ -31,19 +33,35 @@ async def remove_guild_roles(ctx: Context, log_channel: discord.TextChannel, mem
     await ctx.send(f"Odstranil use Guild role od {member.mention}.")
 
 
-async def is_veteran(uuid: str, guild: HypixelGuild) -> VeteranStatus:
+async def is_veteran(uuid: str, guild: HypixelGuild) -> GuildDiscordSyncStatus:
     guild_member = guild.members.get(uuid)
 
     total_weekly_xp = sum(xp for date, xp in guild_member.exp_history.items())
 
-    if total_weekly_xp >= 100_000:
+    VETERAN_WEEKLY_REQUIRED_XP = 100_000
+
+    if total_weekly_xp >= VETERAN_WEEKLY_REQUIRED_XP:
         if guild_member.rank == "Member":
-            return VeteranStatus.ADD_MC_DC
-        return VeteranStatus.ADD_DISCORD
+            return GuildDiscordSyncStatus.ADD_MC_DC
+        return GuildDiscordSyncStatus.ADD_DISCORD
     else:
         if guild_member.rank == "Veteran":
-            return VeteranStatus.REMOVE_MC_DC
-        return VeteranStatus.REMOVE_DISCORD
+            return GuildDiscordSyncStatus.REMOVE_MC_DC
+        return GuildDiscordSyncStatus.REMOVE_DISCORD
+
+
+async def is_professional(player: HypixelPlayer, guild: HypixelGuild) -> GuildDiscordSyncStatus:
+    meets_criteria = player.duels_wins >= 1000 or player.bedwars_level >= 100 or player.skywars_level >= 10 or player.network_level >= 100
+    guild_player = guild.members.get(player.uuid)
+    lower_ranks = ["Member", "Veteran"]
+    if meets_criteria:
+        if guild_player.rank in lower_ranks:
+            return GuildDiscordSyncStatus.ADD_MC_DC
+        return GuildDiscordSyncStatus.ADD_DISCORD
+    else:
+        if guild_player.rank == "Professional":
+            return GuildDiscordSyncStatus.REMOVE_MC_DC
+        return GuildDiscordSyncStatus.REMOVE_DISCORD
 
 
 class Utils:

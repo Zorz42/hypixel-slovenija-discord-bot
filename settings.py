@@ -12,6 +12,7 @@ class DiscordChannel(Enum):
 class DiscordRole(Enum):
     ADMIN = auto()
     OFFICER = auto()
+    PROFESSIONAL = auto()
     VETERAN = auto()
     GUILD_MEMBER = auto()
     MEMBER = auto()
@@ -34,6 +35,7 @@ class Settings:
             "member_role_id": 0,
             "guild_member_role_id": 0,
             "veteran_role_id": 0,
+            "professional_role_id": 0,
             "officer_role_id": 0,  # insert Officer role ID
             "admin_role_id": 0,  # insert admin role ID
 
