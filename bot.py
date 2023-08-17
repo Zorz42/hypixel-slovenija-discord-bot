@@ -339,6 +339,7 @@ class HypixelSloveniaDiscordBot(commands.Bot):
 
         if guild is None or guild.guild_id != self.hypixel_guild_id:
             await remove_guild_roles(ctx, self.log_channel, member)
+            return
 
         veteran_status = await is_veteran(player.uuid, guild)
         professional_status = GuildDiscordSyncStatus.REMOVE_DISCORD
