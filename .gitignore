@@ -3,3 +3,4 @@ venv/
 settings.json
 start.sh
 *.pyc
+*.pclprof
